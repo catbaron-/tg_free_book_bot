@@ -1,6 +1,6 @@
-id: @freebook_today_bot
+Telegram bot checking free book from free-learning.
 
-Check free book from free-learning.
+id: @freebook_today_bot
 
 `/checkbook` - check today's free book
 
