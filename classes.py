@@ -9,6 +9,10 @@ import time, os, telegram, atexit
 from threading import Thread
 from telegram.ext import Updater
 from telegram.ext import CommandHandler
+logging.basicConfig(
+    filename='fb.log',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', 
+    level=logging.INFO)
 
 class SubscribedChatID:
     '''
@@ -56,6 +60,7 @@ class SubscribedBook:
 
 class FreeBookBot:
     def __init__(self, token=""):
+        logging.info("Initializing bot...")
         self._check_url = "https://www.packtpub.com/packt/offers/free-learning"
         # TOKEN for telegram bot
         self._token = token
@@ -82,7 +87,10 @@ class FreeBookBot:
         # add chat id to each book
         for (b_type, c_id) in db.execute("select type, chat_id from subscribe"):
             print(b_type+":"+c_id)
-            self._subscribed_books[book_type].add_chat_id(c_id)
+            if b_type == "ANY":
+                self._subscribed_book_any.add_chat_id(c_id)
+            else:
+                self._subscribed_books[book_type].add_chat_id(c_id)
 
     def _db_subscribe(self, q):
         '''
@@ -93,12 +101,13 @@ class FreeBookBot:
         db = sqlite3.connect(self._db_path)
         cur = db.cursor()
         while True:
-            time.sleep(5)
+            time.sleep(3600)
             while not q.empty():
                 obj_chat = q.get()
                 q_sql = 'insert into subscribe (type, chat_id) values ("{}","{}")'.format(obj_chat.get_book_type(), obj_chat.get_chat_id())
                 print(q_sql)
                 cur.execute(q_sql)
+                logging.info("insert subscribe:%s", q_sql)
                 db.commit()
                 
     def _db_unsubscribe(self, q):
@@ -113,6 +122,7 @@ class FreeBookBot:
             time.sleep(5)
             while not q.empty():
                 obj_chat = q.get()
+                logging.info("rm record from subscribe: %s", obj_chat.get_chat_id())
                 cur.execute('delete from subscribe where chat_id="{}"'.format(obj_chat.get_chat_id()))
                 db.commit()
 
@@ -228,31 +238,50 @@ class FreeBookBot:
         thread.start()
 
     def _auto_check(self, bot):
+        logging.info("checking book")
         newbook = self._checkbook()
+        logging.info("newbook is: %s", newbook)
+        dt = datetime.datetime.now()
         if not newbook:
             return
         # read the book name checked last time
         lastbook = ""
         db = sqlite3.connect(self._db_path)
+        cur = db.cursor()
         for r in db.execute("select book_name from free_book"):
             lastbook = r[0]
             break
+        logging.info("lastbook is: %s", lastbook)
+        if lastbook == "":
+            logging.warning("lastbook is None")
+            logging.info("insert new book %s" % newbook)
+            cur.execute("insert into free_book (book_name, check_time) values ('%s', '%s')" % (newbook, dt))
+            logging.info("db.commit")
+            db.commit()
         print(lastbook)
         # Check if the book is new 
-        if newbook and lastbook and newbook.strip() != lastbook.strip():
+        if ""==lastbook and newbook or newbook and lastbook and newbook.strip() != lastbook.strip():
         # if True:
             # update the new free book
-            dt = datetime.datetime.now()
-            db.execute("update free_book set book_name='%s', check_time='%s'" % (newbook, dt))
+            q_sql = "update free_book set book_name='%s', check_time='%s';" % (newbook, dt)
+            logging.info("update free_book: %s ", q_sql)
+            cur.execute("""update free_book SET book_name=?, check_time=?""", (newbook, dt))
+            logging.info("db.commit")
+            db.commit()
 
             # send message to all user subscribed
+            logging.info("sending message...")
+            print(self._subscribed_book_any.get_chat_ids())
             for cid in self._subscribed_book_any.get_chat_ids():
+                logging.info("send msg to ANY: %s", cid)
                 bot.sendMessage(chat_id = cid,
                     text="Today's free book: `{}`. {}".format(newbook, self._check_url))
 
+            print(self._subscribed_books.values())
             for book in self._subscribed_books.values():
                 if book.get_key_word() in newbook.lower():
                     for cid in book.get_chat_ids():
+                        logging.info("send msg to %s: %s", book.get_book_type(), cid)
                         bot.sendMessage(chat_id = cid,
                             text = "Today's free book ({}) : {}. {}".format(book.get_book_type(), newbook, self._check_url))
 
