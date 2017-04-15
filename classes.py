@@ -169,6 +169,7 @@ class FreeBookBot:
                     # the specific type
                     self._unsubscribe(cid, self._subscribed_book_any)
                     self._subscribe(cid, self._subscribed_books[book_type])
+                    newbook = self._checkbook(self._subscribed_books[book_type].get_key_word())
                 else:
                     # for book of type 'ANY',
                     # unsubscribe it from other types first, then add it to 
@@ -176,8 +177,12 @@ class FreeBookBot:
                     for book in self._subscribed_books.values():
                         self._unsubscribe(cid, book)
                     self._subscribe(cid, self._subscribed_book_any)
+                    newbook = self._checkbook(self._subscribed_book_any.get_key_word())
                 bot.sendMessage(chat_id=update.message.chat_id,
                     text="You're subscribed from @freebook_today_bot for `{}`".format(book_type))
+                if newbook:
+                    bot.sendMessage(chat_id=update.message.chat_id,
+                        text="Today's free book: `{}`".format(newbook))
             thread = Thread(target=_t, args=(bot, update))
             thread.start()
         return func
@@ -289,7 +294,7 @@ class FreeBookBot:
         bot = telegram.Bot(token=self._token)
         while True:
             self._auto_check(bot)
-            time.sleep(5)
+            time.sleep(3600)
     def run(self):
         dispatcher = self._updater.dispatcher
         dispatcher.add_handler(CommandHandler("start", self._func_start))
