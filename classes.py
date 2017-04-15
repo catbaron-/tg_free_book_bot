@@ -182,7 +182,7 @@ class FreeBookBot:
                     text="You're subscribed from @freebook_today_bot for `{}`".format(book_type))
                 if newbook:
                     bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Today's free book: `{}`".format(newbook))
+                        text="Today's free book: `{}`.{}".format(newbook, self._check_url))
             thread = Thread(target=_t, args=(bot, update))
             thread.start()
         return func
