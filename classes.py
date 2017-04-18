@@ -59,9 +59,9 @@ class SubscribedBook:
         return self._cids
 
 class FreeBookBot:
-    def __init__(self, token=""):
+    def __init__(self, token="", url = ""):
         logging.info("Initializing bot...")
-        self._check_url = "https://www.packtpub.com/packt/offers/free-learning"
+        self._check_url = url
         # TOKEN for telegram bot
         self._token = token
         self._updater = Updater(token = self._token) 
@@ -129,10 +129,10 @@ class FreeBookBot:
     def _func_start(self, bot, update):
         bot.sendMessage(chat_id=update.message.chat_id,
             text="/checkbook - check today's free book\n"\
-            "/books_any - subscribe today's free book\n"\
-            "/books_py - subscribe today's free book on Python\n"\
-            "/rm_books_any - unsubscribe any of today's free book\n"\
-            "/rm_books_py - unsubscribe today's free book on Python\n"\
+            "/books_any - subscribe to today's free book\n"\
+            "/books_py - subscribe to today's free book on Python\n"\
+            "/rm_books_any - unsubscribe from today's free book\n"\
+            "/rm_books_py - unsubscribe from today's free book on Python\n"\
             "/start, /help - show this message\n")
 
     def _subscribe(self, cid, book):
@@ -179,7 +179,7 @@ class FreeBookBot:
                     self._subscribe(cid, self._subscribed_book_any)
                     newbook = self._checkbook(self._subscribed_book_any.get_key_word())
                 bot.sendMessage(chat_id=update.message.chat_id,
-                    text="You're subscribed from @freebook_today_bot for `{}`".format(book_type))
+                    text="You're subscribing to @freebook_today_bot for `{}`".format(book_type))
                 if newbook:
                     bot.sendMessage(chat_id=update.message.chat_id,
                         text="Today's free book: `{}`.{}".format(newbook, self._check_url))
@@ -203,7 +203,7 @@ class FreeBookBot:
                     for book in self._subscribed_book_any.values():
                         self.unsubscribe(cid, book)
                         unsub_types.add(book.get_book_type())
-                    msg = "You're not subscribed from @freebook_today_bot for `{}`".format(unsub_types)
+                    msg = "You're not subscribing to @freebook_today_bot for `{}`".format(unsub_types)
                 bot.sendMessage(chat_id=update.message.chat_id, text=msg)
             thread = Thread(target=_t, args=(bot, update))
             thread.start()
